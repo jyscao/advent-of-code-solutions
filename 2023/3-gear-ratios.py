@@ -83,7 +83,7 @@ def get_gear_candidates(data):
 
 if __name__ == "__main__":
     data = get_data()
-    ans1 = gear1(data)  # wrong: 533776; correct 533784
+    ans1 = gear1(data)  # wrong: 533776; correct: 533784
     print(ans1)
     ans2 = gear2(data)
     print(ans2)
