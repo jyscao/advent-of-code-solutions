@@ -85,3 +85,32 @@ if __name__ == "__main__":
     expanded_space2, expansions = expand_space2(data)
     galaxies2 = get_galaxies(expanded_space2)
     print(calc_tot_dist2(expansions, galaxies2))
+
+
+
+
+
+# NOTE: a cleaner implementation found on Reddit:
+# https://www.reddit.com/r/adventofcode/comments/18fmrjk/2023_day_11_solutions/kcvd4io/
+# https://github.com/fuglede/adventofcode/blob/master/2023/day11/solutions.py
+
+# from itertools import combinations
+#
+# with open("../inputs/2023/11.txt") as f:
+#     ls = f.read().strip().split("\n")
+#
+# empty = {j for j in range(len(ls[0])) if all(ls[i][j] != "#" for i in range(len(ls)))}
+# galaxies = {(i, j) for i, l in enumerate(ls) for j, x in enumerate(l) if x == "#"}
+# pairs = list(combinations(galaxies, 2))
+#
+#
+# def dist(x1, x2, y1, y2, scale):
+#     cols = set(range(x2, y2, 1 if y2 > x2 else -1))
+#     return abs(x1 - y1) + abs(x2 - y2) + len(empty & cols) * scale
+#
+#
+# # Part 1
+# print(sum(dist(*x, *y, 1) for x, y in pairs))
+#
+# # Part 2
+# print(sum(dist(*x, *y, 999_999) for x, y in pairs))
