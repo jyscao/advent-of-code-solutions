@@ -1,3 +1,5 @@
+import shapely
+
 class Digger:
 
     def __init__(self, dig_plan):
@@ -18,6 +20,24 @@ class Digger:
                 self.y += dy
                 self.x += dx
                 self.trench_boundary.append((self.y, self.x))
+
+        self._normalize_boundary()
+        assert self.trench_boundary[0] == self.trench_boundary[-1]
+        assert len(self.trench_boundary) == len(set(self.trench_boundary)) + 1
+
+
+    def _dig_to_corners(self):
+        for dir, steps, _ in self.dp:
+            dy, dx = {
+                "U": (-1, 0),
+                "D": (1, 0),
+                "L": (0, -1),
+                "R": (0, 1),
+            }[dir]
+            Dy, Dx = dy * steps, dx * steps
+            self.y += Dy
+            self.x += Dx
+            self.trench_boundary.append((self.y, self.x))
 
         self._normalize_boundary()
         assert self.trench_boundary[0] == self.trench_boundary[-1]
@@ -117,11 +137,14 @@ class Digger:
             print("".join(t for t in row))
 
 
+def calc_area_w_shapely(coordinates):
+    return int(shapely.Polygon(coordinates).buffer(0.5, join_style="mitre").area)
+
 
 
 if __name__ == "__main__":
     with open("../inputs/2023/18.txt") as f:
-        dig_plan = [(dir, int(amt), color.strip('()')) for line in f.readlines() for dir, amt, color in [line.strip().split()]]
+        dig_plan = [(dir, int(amt), color.strip('#()')) for line in f.readlines() for dir, amt, color in [line.strip().split()]]
 
     test_data = """
 R 6 (#70c710)
@@ -139,10 +162,16 @@ U 3 (#a77fa3)
 L 2 (#015232)
 U 2 (#7a21e3)
     """
-    dig_plan = [(dir, int(amt), color.strip('()')) for line in test_data.strip().splitlines() for dir, amt, color in [line.strip().split()]]
+    # dig_plan = [(dir, int(amt), color.strip('#()')) for line in test_data.strip().splitlines() for dir, amt, color in [line.strip().split()]]
 
     # part 1
     digger = Digger(dig_plan)
     digger.dig_then_report()
 
     # part 2
+
+    fixed_dig_plan = [({str(i): dir for i, dir in enumerate('RDLU')}[d], int(dist, base=16), None)
+        for _, _, color in dig_plan for dist, d in [(color[:-1], color[-1])]]
+    digger2 = Digger(fixed_dig_plan)
+    digger2._dig_to_corners()
+    print(calc_area_w_shapely(digger2.trench_boundary))
