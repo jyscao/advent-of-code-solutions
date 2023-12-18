@@ -2,7 +2,7 @@ import heapq
 
 
 def find_neighbors1(grid, curr_cost, curr_pos, src_dir):
-    N = len(grid)
+    M, N = len(grid), len(grid[0])
     x, y = curr_pos
     sx, sy = src_dir
 
@@ -23,10 +23,10 @@ def find_neighbors1(grid, curr_cost, curr_pos, src_dir):
         for i in range(1, 4):
             dir_l, dir_r = 1 * sy, -1 * sy
             (xl, _), (xr, _) = left, right = (x + (dir_l * i), y), (x + (dir_r * i), y)
-            if 0 <= xl < N:
+            if 0 <= xl < M:
                 cost_l += grid[xl][y]
                 reachables.append((curr_cost + cost_l, left, (dir_l, 0)))
-            if 0 <= xr < N:
+            if 0 <= xr < M:
                 cost_r += grid[xr][y]
                 reachables.append((curr_cost + cost_r, right, (dir_r, 0)))
     else:
@@ -36,7 +36,7 @@ def find_neighbors1(grid, curr_cost, curr_pos, src_dir):
     
 
 def find_neighbors2(grid, curr_cost, curr_pos, src_dir):
-    N = len(grid)
+    M, N = len(grid), len(grid[0])
     x, y = curr_pos
     sx, sy = src_dir
 
@@ -61,11 +61,11 @@ def find_neighbors2(grid, curr_cost, curr_pos, src_dir):
             dir_l, dir_r = 1 * sy, -1 * sy
             (xl, _), (xr, _) = left, right = (x + (dir_l * i), y), (x + (dir_r * i), y)
 
-            if 0 <= xl < N:
+            if 0 <= xl < M:
                 cost_l += grid[xl][y]
                 if i >= 4:
                     reachables.append((curr_cost + cost_l, left, (dir_l, 0)))
-            if 0 <= xr < N:
+            if 0 <= xr < M:
                 cost_r += grid[xr][y]
                 if i >= 4:
                     reachables.append((curr_cost + cost_r, right, (dir_r, 0)))
@@ -89,8 +89,8 @@ def init_edges_map_and_pq(grid, nb_find_fn):
 
 
 def search_cheapest_to_destination(grid, nb_find_fn):
-    N = len(grid)
-    destination = (N - 1, N - 1)
+    M, N = len(grid), len(grid[0])
+    destination = (M - 1, N - 1)
 
     edges_map, cost_pq = init_edges_map_and_pq(grid, nb_find_fn)
     curr_cost, curr_pos = -1, (0, 0)
@@ -141,6 +141,15 @@ if __name__ == "__main__":
 4322674655533
     """
     # grid = [[int(d) for d in list(line.strip())] for line in test_data.strip().splitlines()]
+
+    dummy_example = """
+111111111111
+999999999991
+999999999991
+999999999991
+999999999991
+    """
+    # grid = [[int(d) for d in list(line.strip())] for line in dummy_example.strip().splitlines()]
 
     # part 1
     lowest_cost1 = search_cheapest_to_destination(grid, find_neighbors1)
