@@ -108,16 +108,6 @@ def add_to_coords_stk(mat_size, coord, fill_status):
         return False
 
 
-def get_original_fill(maze_mat, pipe_map):
-    M, N = len(maze_mat), len(maze_mat[0])
-    fill_status = [[False] * N for _ in range(M)]
-    for i, row in enumerate(fill_status):
-        for j, _ in enumerate(row):
-            if (i, j) in pipe_map:
-                fill_status[i][j] = True
-    return fill_status
-
-
 def flood_fill(maze_mat, pipe_map):
     M, N = len(maze_mat), len(maze_mat[0])
 
