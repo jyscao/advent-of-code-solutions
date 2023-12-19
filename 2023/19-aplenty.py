@@ -55,28 +55,27 @@ def build_wf_tree(wfs):
             self.right = right
             self.allowed_parts = allowed_parts
 
-        def build_tree_str(self, level):
-            prefix_indent = "\t" * level
-            prefix = f"{prefix_indent}┗━━━━" if prefix_indent else ""
-            "┃┣"
-
+        def build_tree_str(self, parent_prefix):
             if self.label in ("A", "R",):
-                return f"{prefix}━━━━[{self.label}]"
+                str_rep = f"[{self.label}]"
             else:
                 label = f"{self.label} | " if self.label else ""
-
-            threshold = f"{' <= '.join(str(v) for v in self.threshold)}" if self.threshold else ""
-            str_rep = f"{prefix}{'{ '}{label}{threshold}{' }'}"
+                threshold = f"{' <= '.join(str(v) for v in self.threshold)}" if self.threshold else ""
+                str_rep = f"{'{ '}{label}{threshold}{' }'}"
 
             if self.left:
-                str_rep += "\n" + WorkflowNode.build_tree_str(self.left, level + 1)
+                prefix = f"{parent_prefix}\t┣━━━━"
+                prefix_child = f"{parent_prefix}\t┃"
+                str_rep += "\n" + prefix + WorkflowNode.build_tree_str(self.left, prefix_child)
             if self.right:
-                str_rep += "\n" + WorkflowNode.build_tree_str(self.right, level + 1)
+                prefix = f"{parent_prefix}\t┗━━━━"
+                prefix_child = f"{parent_prefix} \t"
+                str_rep += "\n" + prefix + WorkflowNode.build_tree_str(self.right, prefix_child)
 
             return str_rep
 
         def __str__(self):
-            return self.build_tree_str(0)
+            return self.build_tree_str("")
 
 
     def parse_cond(cond_dest):
