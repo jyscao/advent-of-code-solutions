@@ -57,21 +57,21 @@ def build_wf_tree(wfs):
 
         def build_tree_str(self, parent_prefix):
             if self.label in ("A", "R",):
-                str_rep = f"[{self.label}]"
+                label = {"A": "Accept", "R": "Reject"}[self.label]
+                str_rep = f"<{label}>"
             else:
                 label = f"{self.label} | " if self.label else ""
                 threshold = f"{' <= '.join(str(v) for v in self.threshold)}" if self.threshold else ""
                 str_rep = f"{'{ '}{label}{threshold}{' }'}"
 
-            if self.left:
-                prefix = f"{parent_prefix}\t┣━━━━"
-                prefix_child = f"{parent_prefix}\t┃"
-                str_rep += "\n" + prefix + WorkflowNode.build_tree_str(self.left, prefix_child)
-            if self.right:
-                prefix = f"{parent_prefix}\t┗━━━━"
-                prefix_child = f"{parent_prefix} \t"
-                str_rep += "\n" + prefix + WorkflowNode.build_tree_str(self.right, prefix_child)
-
+            if self.left and self.right:
+                if self.left.label == self.right.label:
+                    str_rep += f"━━━━{self.left}"
+                else:
+                    prefix_l, prefix_r = f"{parent_prefix}\t┣━━━━", f"{parent_prefix}\t┗━━━━"
+                    prefix_child_l, prefix_child_r = f"{parent_prefix}\t┃", f"{parent_prefix}\t"
+                    str_rep += "\n" + prefix_l + WorkflowNode.build_tree_str(self.left, prefix_child_l)
+                    str_rep += "\n" + prefix_r + WorkflowNode.build_tree_str(self.right, prefix_child_r)
             return str_rep
 
         def __str__(self):
