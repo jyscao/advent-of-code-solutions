@@ -48,21 +48,23 @@ def build_wf_tree(wfs):
         (wf.split('{') for wf in wfs.strip().splitlines())}
 
     class WorkflowNode:
-        def __init__(self, label, threshold=(), left=None, right=None, allowed_parts={}):
+        def __init__(self, label, condition=(), left=None, right=None, allowed_parts={}):
             self.label = label
-            self.threshold = threshold
+            self.condition = condition
             self.left = left
             self.right = right
             self.allowed_parts = allowed_parts
 
-        def build_tree_str(self, parent_prefix, extra_line_space=False):
+        def build_tree_str(self, parent_prefix, show_parts_range=False, extra_line_space=False):
             if self.label in ("A", "R",):
                 label = {"A": "Accept", "R": "Reject"}[self.label]
-                str_rep = f"<{label}>"
+                ap_str = f"| {self.allowed_parts}" if show_parts_range else ""
+                str_rep = f"<{label}{ap_str}>"
             else:
                 label = f"{self.label} | " if self.label else ""
-                threshold = f"{' '.join(str(v) for v in self.threshold)}" if self.threshold else ""
-                str_rep = f"{'{ '}{label}{threshold}{' }'}"
+                ap_str = f"| {self.allowed_parts}" if show_parts_range else ""
+                condition = f"{' '.join(str(v) for v in self.condition)}{ap_str}" if self.condition else ""
+                str_rep = f"{'{ '}{label}{condition}{' }'}"
 
             if self.left and self.right:
                 if self.left.label == self.right.label:
@@ -110,14 +112,50 @@ def build_wf_tree(wfs):
             cond, rest = rule, None
 
         wfnode = WorkflowNode(wid)
-        threshold, dest = parse_cond(cond)
-        if threshold:
-            wfnode.threshold = threshold
+        condition, dest = parse_cond(cond)
+        if condition:
+            wfnode.condition = condition
         wfnode.left = build_from_node(dest)
         wfnode.right = build_from_node(rest)
         return wfnode
 
     return build_from_node("in")
+
+
+def calc_total_acceptable(wf_tree, attr_max=4000):
+    import copy
+    wf_tree.allowed_parts = {attr: (1, attr_max) for attr in 'xmas'}
+
+    def traverse_wf_tree_get_total(node):
+        if node.label == "A":
+            res = 1
+            for a, b in node.allowed_parts.values():
+                res *= b - a + 1
+            return res
+        elif node.label == "R":
+            return 0
+
+        attr, comparison, threshold = node.condition
+        unfiltered = node.allowed_parts
+        if comparison == "<":
+            filtered_l, filtered_r = copy.copy(unfiltered), copy.copy(unfiltered)
+            a, b = unfiltered[attr]
+            filtered_l[attr] = (a, threshold - 1)
+            filtered_r[attr] = (threshold, b)
+        elif comparison == ">":
+            filtered_l, filtered_r = copy.copy(unfiltered), copy.copy(unfiltered)
+            a, b = unfiltered[attr]
+            filtered_l[attr] = (threshold + 1, b)
+            filtered_r[attr] = (a, threshold)
+        else:
+            raise Exception("this should never be reached!")
+
+        node.left.allowed_parts = filtered_l
+        node.right.allowed_parts = filtered_r
+
+        return traverse_wf_tree_get_total(node.left) + traverse_wf_tree_get_total(node.right)
+
+    return traverse_wf_tree_get_total(wf_tree)
 
 
 
@@ -148,8 +186,10 @@ hdj{m>838:A,pv}
 
     # part 1
     res = process_parts(wfs, parts)
-    # print(res)
+    print(res)
 
     # part 2
     wf_tree = build_wf_tree(wfs)
+    total_acceptable = calc_total_acceptable(wf_tree)
+    print(total_acceptable)
     print(wf_tree)
