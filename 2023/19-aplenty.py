@@ -61,7 +61,7 @@ def build_wf_tree(wfs):
                 str_rep = f"<{label}>"
             else:
                 label = f"{self.label} | " if self.label else ""
-                threshold = f"{' <= '.join(str(v) for v in self.threshold)}" if self.threshold else ""
+                threshold = f"{' '.join(str(v) for v in self.threshold)}" if self.threshold else ""
                 str_rep = f"{'{ '}{label}{threshold}{' }'}"
 
             if self.left and self.right:
@@ -83,10 +83,10 @@ def build_wf_tree(wfs):
             cond, dest = cond_dest.split(':')
             if '<' in cond:
                 attr, threshold = cond.strip().split('<')
-                return (attr, int(threshold) - 1), dest
+                return (attr, '<', int(threshold)), dest
             elif '>' in cond:
                 attr, threshold = cond.strip().split('>')
-                return (attr, int(threshold)), dest
+                return (attr, '>', int(threshold)), dest
             else:
                 raise Exception("this should never be reached")
         else:
