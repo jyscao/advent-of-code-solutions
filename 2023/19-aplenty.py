@@ -43,6 +43,82 @@ def process_parts(wfs, parts):
     return sum(sum(v for v in part.values()) for part in accepted)
 
 
+def build_wf_tree(wfs):
+    workflows_map = {wid: rules_str.strip('} ') for wid, rules_str in 
+        (wf.split('{') for wf in wfs.strip().splitlines())}
+
+    class WorkflowNode:
+        def __init__(self, label, threshold=(), left=None, right=None, allowed_parts={}):
+            self.label = label
+            self.threshold = threshold
+            self.left = left
+            self.right = right
+            self.allowed_parts = allowed_parts
+
+        def build_tree_str(self, level):
+            prefix_indent = "\t" * level
+            prefix = f"{prefix_indent}┗━━━━" if prefix_indent else ""
+            "┃┣"
+
+            if self.label in ("A", "R",):
+                return f"{prefix}━━━━[{self.label}]"
+            else:
+                label = f"{self.label} | " if self.label else ""
+
+            threshold = f"{' <= '.join(str(v) for v in self.threshold)}" if self.threshold else ""
+            str_rep = f"{prefix}{'{ '}{label}{threshold}{' }'}"
+
+            if self.left:
+                str_rep += "\n" + WorkflowNode.build_tree_str(self.left, level + 1)
+            if self.right:
+                str_rep += "\n" + WorkflowNode.build_tree_str(self.right, level + 1)
+
+            return str_rep
+
+        def __str__(self):
+            return self.build_tree_str(0)
+
+
+    def parse_cond(cond_dest):
+        if ":" in cond_dest:
+            cond, dest = cond_dest.split(':')
+            if '<' in cond:
+                attr, threshold = cond.strip().split('<')
+                return (attr, int(threshold) - 1), dest
+            elif '>' in cond:
+                attr, threshold = cond.strip().split('>')
+                return (attr, int(threshold)), dest
+            else:
+                raise Exception("this should never be reached")
+        else:
+            return None, cond_dest
+
+    def build_from_node(identifier):
+        if identifier in ("A", "R",):
+            return WorkflowNode(identifier)
+
+        if identifier in workflows_map:
+            wid, rule = identifier, workflows_map[identifier]
+        else:
+            wid, rule = "", identifier
+
+        try:
+            cond, rest = rule.split(',', maxsplit=1)
+        except ValueError:
+            assert ":" not in rule
+            cond, rest = rule, None
+
+        wfnode = WorkflowNode(wid)
+        threshold, dest = parse_cond(cond)
+        if threshold:
+            wfnode.threshold = threshold
+        wfnode.left = build_from_node(dest)
+        wfnode.right = build_from_node(rest)
+        return wfnode
+
+    return build_from_node("in")
+
+
 
 if __name__ == "__main__":
     with open("../inputs/2023/19.txt") as f:
@@ -71,4 +147,8 @@ hdj{m>838:A,pv}
 
     # part 1
     res = process_parts(wfs, parts)
-    print(res)
+    # print(res)
+
+    # part 2
+    wf_tree = build_wf_tree(wfs)
+    print(wf_tree)
