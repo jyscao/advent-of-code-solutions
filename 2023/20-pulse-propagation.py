@@ -1,6 +1,5 @@
 import abc
 from enum import Enum
-# import queue
 
 
 class Pulse(Enum):
@@ -38,6 +37,20 @@ class Module:
         return self.__str__()
 
 
+class Sink(Module):
+    def __init__(self, name, output_mods):
+        super(Sink, self).__init__(name, output_mods)
+        self.low_received = False
+
+    def receive(self, src, pulse):
+        assert src == 'bn'
+        if pulse == Pulse.LOW:
+            self.low_received = True
+
+    def send(self, mod_reg, pq):
+        pass
+
+
 class FlipFlop(Module):
     def __init__(self, name, output_mods):
         super(FlipFlop, self).__init__(name, output_mods)
@@ -49,14 +62,12 @@ class FlipFlop(Module):
 
     def send(self, module_registry, process_queue):
         _, received = self.msg_q.pop(0)
-        # print(f"{self.name} received {received} from {src}")
         if received == Pulse.LOW:
             pulse_to_send = Pulse.LOW if self.state else Pulse.HIGH
             self.state = int(not self.state)
             for mod_id in self.outputs:
                 mod_obj = module_registry[mod_id]
                 mod_obj.receive(self.name, pulse_to_send)
-                # print(f"{self.name} sent {pulse_to_send} to {mod_id}")
                 process_queue.append(mod_obj)
             self._update_pulse_count(pulse_to_send)
 
@@ -65,6 +76,7 @@ class Conjuction(Module):
     def __init__(self, name, output_mods, input_mods):
         super(Conjuction, self).__init__(name, output_mods)
         self.memory = {im: Pulse.LOW for im in input_mods}
+        self.all_high = False
 
     def receive(self, src: str, pulse: Pulse):
         self.msg_q.append((src, pulse))
@@ -72,12 +84,11 @@ class Conjuction(Module):
     def send(self, module_registry, process_queue):
         src, received = self.msg_q.pop(0)
         self.memory[src] = received
-        pulse_to_send = Pulse.LOW if all(p == Pulse.HIGH for p in self.memory.values()) else Pulse.HIGH
-        # print(f"{self.name} has memory {self.memory}, {len(self.memory)}")
+        self.all_high = all(p == Pulse.HIGH for p in self.memory.values())
+        pulse_to_send = Pulse.LOW if self.all_high else Pulse.HIGH
         for mod_id in self.outputs:
             mod_obj = module_registry[mod_id]
             mod_obj.receive(self.name, pulse_to_send)
-            # print(f"{self.name} sent {pulse_to_send} to {mod_id}")
             process_queue.append(mod_obj)
         self._update_pulse_count(pulse_to_send)
 
@@ -95,7 +106,6 @@ class Broadcaster(Module):
         for mod_id in self.outputs:
             mod_obj = module_registry[mod_id]
             mod_obj.receive(self.name, pulse_to_send)
-            # print(f"{self.name} sent {pulse_to_send} to {mod_id}")
             process_queue.append(mod_obj)
         self._update_pulse_count(pulse_to_send)
 
@@ -145,21 +155,9 @@ def signal_system(mod_reg, button_presses):
         init_mod = mod_reg["broadcaster"]
         init_mod.receive("button", Pulse.LOW)
         pq.append(init_mod)
-
-        # print()
-        # print(pq)
-        # for mod in mod_reg.values():
-        #     print(mod, end="\t")
-        # print()
         while pq:
             curr_mod = pq.pop(0)
             curr_mod.send(mod_reg, pq)
-
-            # print()
-            # print(pq)
-            # for mod in mod_reg.values():
-            #     print(mod, end="\t")
-            # print()
 
 
 def calc_total_signals(module_registry, button_count):
@@ -167,8 +165,45 @@ def calc_total_signals(module_registry, button_count):
     for _, mod_obj in module_registry.items():
         low += mod_obj.low_count
         high += mod_obj.high_count
-
     return low, high, low * high
+
+
+def get_rx_upstream_ggp(data):
+    mod_conns_map = get_mod_conns(data)
+    conjunction_inputs = get_conjunction_inputs(mod_conns_map)
+
+    # NEED: rx <-low-- bn <-high-- {pl, mz, lz, zm} <-low-- {qt, dq, vt, nl} <-high--
+    rx_p = [m for m, outs in mod_conns_map.items() if 'rx' in outs][0][1:]     # 'bn'
+    return [m for cj in conjunction_inputs[rx_p] for m in conjunction_inputs[cj]]
+
+
+def find_conj_low_activation_cycle(conj_mod, mod_reg):
+    i, pq = 0, []
+    cond = mod_reg[conj_mod].all_high
+    while not cond:
+        init_mod = mod_reg["broadcaster"]
+        init_mod.receive("button", Pulse.LOW)
+        pq.append(init_mod)
+        while pq:
+            curr_mod = pq.pop(0)
+            curr_mod.send(mod_reg, pq)
+            if mod_reg[conj_mod].all_high:
+                cond = True
+                break
+        i += 1
+    return i
+
+
+def calc_rx_activation(data):
+    res = 1
+    for conj_mod in get_rx_upstream_ggp(data):
+        mod_reg = create_module_registry(data)
+        mod_reg['rx'] = Sink('rx', [])
+        activation_cycle = find_conj_low_activation_cycle(conj_mod, mod_reg)
+        res *= activation_cycle
+
+    return res
+
 
 
 if __name__ == "__main__":
@@ -194,12 +229,14 @@ broadcaster -> a
     # data = example_1.strip()
     # data = example_2.strip()
 
-    mod_reg = create_module_registry(data)
-    # print(mod_reg)
-
     # part 1
-    mod_reg['rx'] = FlipFlop('rx', [])
+    mod_reg = create_module_registry(data)
+    mod_reg['rx'] = Sink('rx', [])
     button_presses = 1000
     signal_system(mod_reg, button_presses)
     ans = calc_total_signals(mod_reg, button_presses)
     print(ans)
+
+    # part 2
+    res = calc_rx_activation(data)
+    print(res)
