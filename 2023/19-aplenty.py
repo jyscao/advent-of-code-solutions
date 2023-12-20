@@ -55,20 +55,21 @@ def build_wf_tree(wfs):
             self.right = right
             self.allowed_parts = allowed_parts
 
-        def build_tree_str(self, parent_prefix, show_parts_range=False, extra_line_space=False):
+        def build_tree_str(self, parent_prefix, show_parts_range=True, extra_line_space=False):
             if self.label in ("A", "R",):
                 label = {"A": "Accept", "R": "Reject"}[self.label]
-                ap_str = f"| {self.allowed_parts}" if show_parts_range else ""
-                str_rep = f"<{label}{ap_str}>"
+                ap_str = f" ⟶ {self.allowed_parts}" if show_parts_range else ""
+                str_rep = f"<{label}>{ap_str}"
             else:
                 label = f"{self.label} | " if self.label else ""
-                ap_str = f"| {self.allowed_parts}" if show_parts_range else ""
-                condition = f"{' '.join(str(v) for v in self.condition)}{ap_str}" if self.condition else ""
-                str_rep = f"{'{ '}{label}{condition}{' }'}"
+                ap_str = f" ⟶ {self.allowed_parts}" if show_parts_range else ""
+                condition = f"{' '.join(str(v) for v in self.condition)}" if self.condition else ""
+                str_rep = f"{'{ '}{label}{condition}{' }'}{ap_str}"
 
             if self.left and self.right:
                 if self.left.label == self.right.label:
-                    str_rep += f"━━━━{self.left}"
+                    result_label = {"A": "Accept", "R": "Reject"}[self.left.label]
+                    str_rep += f" ⟵ <{result_label}>"
                 else:
                     prefix_l, prefix_r = f"{parent_prefix}\t┣━━━━", f"{parent_prefix}\t┗━━━━"
                     prefix_child_l, prefix_child_r = f"{parent_prefix}\t┃", f"{parent_prefix}\t"
