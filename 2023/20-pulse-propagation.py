@@ -10,22 +10,17 @@ class Pulse(Enum):
 
 class Module:
     def __init__(self, name, output_mods):
-        # self.mod_reg = module_registry
-        # self.mod_t = mod_t
         self.name = name
         self.outputs, self.n_outs = output_mods, len(output_mods)
         self.low_count, self.high_count = 0, 0
+        self.msg_q = []
 
     @abc.abstractmethod
     def receive(self):
         pass
 
     @abc.abstractmethod
-    def get_pulse_to_send(self):
-        pass
-
-    @abc.abstractmethod
-    def send(self, module_registry, pulse):
+    def send(self):
         pass
 
     def _update_pulse_count(self, pulse_sent):
@@ -50,17 +45,20 @@ class FlipFlop(Module):
 
     def receive(self, src: str, pulse: Pulse):
         assert bool(src)
-        self.received = pulse
+        self.msg_q.append((src, pulse))
 
     def send(self, module_registry, process_queue):
-        if self.received == Pulse.LOW:
-            pulse = Pulse.LOW if self.state else Pulse.HIGH
+        _, received = self.msg_q.pop(0)
+        # print(f"{self.name} received {received} from {src}")
+        if received == Pulse.LOW:
+            pulse_to_send = Pulse.LOW if self.state else Pulse.HIGH
             self.state = int(not self.state)
             for mod_id in self.outputs:
                 mod_obj = module_registry[mod_id]
-                mod_obj.receive(self.name, pulse)
+                mod_obj.receive(self.name, pulse_to_send)
+                # print(f"{self.name} sent {pulse_to_send} to {mod_id}")
                 process_queue.append(mod_obj)
-            self._update_pulse_count(pulse)
+            self._update_pulse_count(pulse_to_send)
 
 
 class Conjuction(Module):
@@ -69,15 +67,19 @@ class Conjuction(Module):
         self.memory = {im: Pulse.LOW for im in input_mods}
 
     def receive(self, src: str, pulse: Pulse):
-        self.memory[src] = pulse
+        self.msg_q.append((src, pulse))
 
     def send(self, module_registry, process_queue):
-        pulse = Pulse.LOW if all(p == Pulse.HIGH for p in self.memory.values()) else Pulse.HIGH
+        src, received = self.msg_q.pop(0)
+        self.memory[src] = received
+        pulse_to_send = Pulse.LOW if all(p == Pulse.HIGH for p in self.memory.values()) else Pulse.HIGH
+        # print(f"{self.name} has memory {self.memory}, {len(self.memory)}")
         for mod_id in self.outputs:
             mod_obj = module_registry[mod_id]
-            mod_obj.receive(self.name, pulse)
+            mod_obj.receive(self.name, pulse_to_send)
+            # print(f"{self.name} sent {pulse_to_send} to {mod_id}")
             process_queue.append(mod_obj)
-        self._update_pulse_count(pulse)
+        self._update_pulse_count(pulse_to_send)
 
 
 class Broadcaster(Module):
@@ -86,14 +88,16 @@ class Broadcaster(Module):
 
     def receive(self, src: str, pulse: Pulse):
         assert src == "button" and pulse == Pulse.LOW
-        self.pulse = pulse
+        self.msg_q.append((src, pulse))
 
     def send(self, module_registry, process_queue):
+        _, pulse_to_send = self.msg_q.pop(0)
         for mod_id in self.outputs:
             mod_obj = module_registry[mod_id]
-            mod_obj.receive(self.name, self.pulse)
+            mod_obj.receive(self.name, pulse_to_send)
+            # print(f"{self.name} sent {pulse_to_send} to {mod_id}")
             process_queue.append(mod_obj)
-        self._update_pulse_count(self.pulse)
+        self._update_pulse_count(pulse_to_send)
 
 
 def init_and_get_module(mod_id, outputs_ls, conjunction_inputs):
@@ -105,7 +109,7 @@ def init_and_get_module(mod_id, outputs_ls, conjunction_inputs):
         return mod_name, FlipFlop(mod_name, outputs_ls)
     elif mod_id.startswith("&"):
         mod_name = mod_id[1:]
-        return mod_name, Conjuction(mod_name, outputs_ls, conjunction_inputs)
+        return mod_name, Conjuction(mod_name, outputs_ls, conjunction_inputs[mod_name])
     else:
         raise Exception("this should never be reached!")
 
@@ -128,7 +132,6 @@ def get_conjunction_inputs(mod_conns_map):
 
 def create_module_registry(data):
     mod_conns_map = get_mod_conns(data)
-    print(mod_conns_map)
     conjunction_inputs = get_conjunction_inputs(mod_conns_map)
 
     return {mod_name: mod_obj for mod_name, mod_obj in
@@ -137,12 +140,17 @@ def create_module_registry(data):
 
 
 def signal_system(mod_reg, button_presses):
-    # q = queue.Queue()
     pq = []
     for _ in range(button_presses):
         init_mod = mod_reg["broadcaster"]
         init_mod.receive("button", Pulse.LOW)
         pq.append(init_mod)
+
+        # print()
+        # print(pq)
+        # for mod in mod_reg.values():
+        #     print(mod, end="\t")
+        # print()
         while pq:
             curr_mod = pq.pop(0)
             curr_mod.send(mod_reg, pq)
@@ -183,15 +191,15 @@ broadcaster -> a
 &con -> output
     """
 
-    data = example_1.strip()
-
-    # mod_conns = get_mod_conns(data)
-    # print(mod_conns)
+    # data = example_1.strip()
+    # data = example_2.strip()
 
     mod_reg = create_module_registry(data)
-    print(mod_reg)
+    # print(mod_reg)
 
-    button_presses = 1
+    # part 1
+    mod_reg['rx'] = FlipFlop('rx', [])
+    button_presses = 1000
     signal_system(mod_reg, button_presses)
     ans = calc_total_signals(mod_reg, button_presses)
     print(ans)
