@@ -64,6 +64,9 @@ if __name__ == "__main__":
     # where x0 = 65, x1 = 65 + 131, x2 = 65 + 131*2
     #
     # the original grid was extended into 5x5 repeats to obtain the correct reachables
+    with open("../inputs/2023/21-5x5.txt") as f:
+        grid = [line.strip() for line in f.readlines()]
+
     # empirically calculating using the functions from part 1, we have:
     start = find_start(grid)
     s0, s1, s2 = 65, 65 + 131, 65 + 131 * 2
