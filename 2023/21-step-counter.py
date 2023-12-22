@@ -21,56 +21,6 @@ def find_start(grid):
                 return i, j
 
 
-# def get_n_available_plots(grid):
-#     M, N = len(grid), len(grid[0])
-#     n_rocks = sum(row.count("#") for row in grid)
-#     return M * N - n_rocks
-#
-#
-# def get_corner_and_edge_plots(grid):
-#     m, n = len(grid) - 1, len(grid[0]) - 1
-#     corners = [(0, 0), (0, n), (m, 0), (m, n)]
-#     edges_hor = [(i , j) for i in (0, m) for j in range(1, n)]
-#     edges_ver = [(i , j) for i in range(1, m) for j in (0, n)]
-#     return corners, edges_hor + edges_ver
-#
-#
-# def get_next_reachables_from_prev(grid, prev_reachables):
-#     next_reachables = set()
-#     for pos in prev_reachables:
-#         next_reachables.update(get_reachable_neighbors(grid, pos))
-#     return next_reachables
-#
-#
-# def get_min_steps_and_total_available(grid, start_pos):
-#     def reached_max(even_tup, odd_tup):
-#         e_p, e_c = map(len, even_tup)
-#         o_p, o_c   = map(len, odd_tup)
-#         if e_p == e_c and o_p == o_c:
-#             return True, (e_c, o_c)
-#         else:
-#             return False,(e_c, o_c)
-#
-#     even_prev, even_curr = set(), {start_pos}
-#     odd_prev, odd_curr   = set(), get_next_reachables_from_prev(grid, even_curr)
-#     steps = 1
-#     while True:
-#         max_reached, (even_tot, odd_tot) = reached_max((even_prev, even_curr), (odd_prev, odd_curr))
-#         if max_reached:
-#             return (steps - 3, even_tot), (steps - 2, odd_tot)
-#         else:
-#             even_prev, even_curr = even_curr, get_next_reachables_from_prev(grid, odd_curr)
-#             steps += 1
-#             
-#         max_reached, (even_tot, odd_tot) = reached_max((even_prev, even_curr), (odd_prev, odd_curr))
-#         if max_reached:
-#             return (steps - 2, even_tot), (steps - 3, odd_tot)
-#         else:
-#             odd_prev, odd_curr = odd_curr, get_next_reachables_from_prev(grid, even_curr)
-#             steps += 1
-
-
-
 if __name__ == "__main__":
     with open("../inputs/2023/21.txt") as f:
         grid = [line.strip() for line in f.readlines()]
@@ -98,14 +48,31 @@ if __name__ == "__main__":
 
 
     # part 2
-    # see: https://www.reddit.com/r/adventofcode/comments/18nevo3/2023_day_21_solutions/?sort=top
-    # 
-    # Wolfram Alpha solve: https://www.wolframalpha.com/input?i=quadratic+fit+calculator&assumption=%7B%22F%22%2C+%22QuadraticFitCalculator%22%2C+%22data3x%22%7D+-%3E%22%7B0%2C+1%2C+2%7D%22&assumption=%7B%22F%22%2C+%22QuadraticFitCalculator%22%2C+%22data3y%22%7D+-%3E%22%7B3832%2C+33967%2C+94056%7D%22
-    # the equation is: f(x) = 14977x^2 + 15158x + 3832, where 131x + 65 = N_steps
+    # See: https://www.reddit.com/r/adventofcode/comments/18nevo3/2023_day_21_solutions/?sort=top
     #
-    # the quadratic coefficients A & B were obtained by solving for f(0), f(1) & f(2); the original grid was extended into a 5x5 repeats
-    # the empirically solving using the functions from part 1, like so:
+    # A key observation which makes the answer solvable as a quadratic is that:
+    # "the input was crafted in such a way that the start point was in the
+    # center of the grid, the row and column of the start point were completely
+    # empty, and the diagonal lines connecting the midpoints of each edge were
+    # also empty"
+    # 
+    # The quadratic coefficients A & B were obtained by solving for f(0), f(1) & f(2);
+    # where x0 = 65, x1 = 65 + 131, x2 = 65 + 131*2
+    # the original grid was extended into 5x5 repeats to obtain the correct reachables
+    # empirically calculating using the functions from part 1, we have:
     start = find_start(grid)
     s0, s1, s2 = 65, 65 + 131, 65 + 131 * 2
-    sizes = [len(build_reachables_map(grid, s, start)[s]) for s in (s0, s1, s2)]
-    print(sizes)
+    sizes = [len(build_reachables_map(grid, s2, start)[s]) for s in (s0, s1, s2)]
+    print(sizes)    # [3832, 33967, 94056]
+
+    # with the above f(x)'s, a quadratic was fitted using Wolfram Alpha: https://www.wolframalpha.com/input?i=quadratic+fit+calculator&assumption=%7B%22F%22%2C+%22QuadraticFitCalculator%22%2C+%22data3x%22%7D+-%3E%22%7B0%2C+1%2C+2%7D%22&assumption=%7B%22F%22%2C+%22QuadraticFitCalculator%22%2C+%22data3y%22%7D+-%3E%22%7B3832%2C+33967%2C+94056%7D%22
+    # with the equation being: f(x) = 14977x^2 + 15158x + B3832
+    #
+    # b/c n_steps = 131x + 65, so for n_steps = 26501365, x = 202300
+    # and finally, solve for f(202300):
+    def solve(n_steps):
+        x = (n_steps - 65) // 131
+        A = 14977
+        B = 15158
+        return A * x * x + B * x + 3832
+    print(solve(26501365))  # 612941134797232
