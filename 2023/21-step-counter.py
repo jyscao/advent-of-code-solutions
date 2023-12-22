@@ -55,9 +55,14 @@ if __name__ == "__main__":
     # center of the grid, the row and column of the start point were completely
     # empty, and the diagonal lines connecting the midpoints of each edge were
     # also empty"
-    # 
+    #
+    # therefore, 'S' is in the center of the garden, 131 is the side length of
+    # square garden and 65 is the distance from 'S' to either the mid-point of
+    # the top, bottom, left or right sides
+    #
     # The quadratic coefficients A & B were obtained by solving for f(0), f(1) & f(2);
     # where x0 = 65, x1 = 65 + 131, x2 = 65 + 131*2
+    #
     # the original grid was extended into 5x5 repeats to obtain the correct reachables
     # empirically calculating using the functions from part 1, we have:
     start = find_start(grid)
