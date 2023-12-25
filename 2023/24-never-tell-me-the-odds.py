@@ -52,6 +52,27 @@ def count_intersects(pos_vel_ls, bounds):
     return len(collision_points)
 
 
+def get_mat_coeffs_and_b(pos_vel_ls):
+    vec_pairs = [(0, 1), (0, 2)]
+    A, b = [], []
+    for i, j in vec_pairs:
+        (pi_x, pi_y, pi_z), (vi_x, vi_y, vi_z) = pos_vel_ls[i]
+        (pj_x, pj_y, pj_z), (vj_x, vj_y, vj_z) = pos_vel_ls[j]
+
+        x_vec = [0, (vi_z - vj_z), (vj_y - vi_y), 0, (pj_z - pi_z), (pi_y - pj_y)]
+        y_vec = [(vj_z - vi_z), 0, (vi_x - vj_x), (pi_z - pj_z), 0, (pj_x - pi_x)]
+        z_vec = [(vi_y - vj_y), (vj_x - vi_x), 0, (pj_y - pi_y), (pi_x - pj_x), 0]
+
+        x_b = pi_y * vi_z - pi_z * vi_y - pj_y * vj_z + pj_z * vj_y
+        y_b = pi_z * vi_x - pi_x * vi_z - pj_z * vj_x + pj_x * vj_z
+        z_b = pi_x * vi_y - pi_y * vi_x - pj_x * vj_y + pj_y * vj_x
+
+        A += [x_vec, y_vec, z_vec]
+        b += [x_b, y_b, z_b]
+
+    return A, b
+
+
 
 
 
@@ -69,14 +90,36 @@ if __name__ == "__main__":
 20, 19, 15 @  1, -5, -3
     """
 
-    hail_pos_vel = extract_data(test_data)
-    bounds = (7, 27)
-
+    # hail_pos_vel = extract_data(test_data)
+    # bounds = (7, 27)
     # print(hail_pos_vel)
 
     # part 1
     n_intersects = count_intersects(hail_pos_vel, bounds)
     print(n_intersects)
     # 14673 is too high, 14671 is too low -> likely some floating point
-    # arithmetic error that caused the program to miss the correct answer of
-    # 14672
+    # arithmetic error causing the program to miss the correct answer of 14672
+
+    # part 2 amazing insight from Reddit:
+    # https://www.reddit.com/r/adventofcode/comments/18pnycy/2023_day_24_solutions/kepu26z/
+    # 
+    # P_r + t_i * V_r == P_i + t_i * V_i, for all i, where P_r & V_r are the
+    # position & velocity vectors for the rock, P_i & V_i are for each
+    # hailstone, t_i is the collision times for each
+    #
+    # rearranging: P_r - P_i == -t_i * (V_r - V_i) 
+    #
+    # then take the product for both sides with (V_r - V_i) gives:
+    # (P_r - P_i) × (V_r - V_i) == 0, where 0 is the zero vector
+    #
+    # expand: P_r × V_r - P_r × V_i - P_i × V_r + P_i × V_i == 0 
+    # thus: P_r × V_r = P_r × V_i + P_i × V_r - P_i × V_i, for all i
+    #
+    # next we choose 2 pairs of i's, e.g. (0, 1) & (0, 2), and equate (x, y, z)
+    # components of the resulting expanded cross-product equation, to get 6
+    # equations for the 6 unknowns of (pr_x, pr_y, pr_z, vr_x, vr_y, vr_z)
+    A, b = get_mat_coeffs_and_b(hail_pos_vel)
+    #
+    # finally a standard linear solver can be used to obtain the solutions
+    eigenv = np.linalg.solve(A, b)
+    print(eigenv, int(np.round(sum(eigenv[:3]))))
